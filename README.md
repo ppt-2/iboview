@@ -43,6 +43,15 @@ sudo zypper install \
     Mesa-libGL-devel
 ```
 
+#### Arch-Based
+
+```bash
+yay  -S qt-base \
+        openblas \
+        intel-mkl \
+        qt5-script
+```
+
 ### Compiling
 
 Before starting, verify that `qmake --version` informs you that you are using Qt in version 5.x
