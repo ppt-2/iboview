@@ -1,5 +1,5 @@
 # IboView
-** Working on a MAC M series machine installable version. 
+**Working on a MAC M series machine installable version.**
 Source code of the IboView program (http://iboview.org/). Unfortunately, the original program is no longer maintained and the source code as provided
 on their website fails to compile with modern compilers that actually require C++ standard-conforming code (which IboView in parts isn't). Therefore,
 this repo contains our own "fork" of the project in order to incorporate necessary patches ourselves (and potentially also some quality-of-life
