@@ -6,7 +6,7 @@
 #
 # Afterwards there should be a "iboview" executable in the main directory ("make
 # install" copies the exe from the build directory to the project file
-# directory)
+directory)
 #
 # Note: if the external blas does not work, you can compile with
 #
@@ -49,7 +49,7 @@ isEmpty(BLASLIB) {
    #
    # BLASLIB = -LC:\Users\cgk\Develop\Libraries\OpenBLAS\bin -lopenblas
    #
-   # Notes: 
+   # Notes:
    # - Header or include files are not needed, and will not be used if
    #   provided.
    # - Make sure that is a BLAS with 64bit integer interface!
@@ -109,7 +109,6 @@ lessThan(QT_MAJOR_VERSION, 5) : !CONFIG(config_boost_special) {
 #   message(Disabling optional features based on boost/math/special_functions (not found))
 #}
 
-
 ###! START_DIRS
 MICROSCF = src/MicroScf
 MIGRID = src/MicroScf
@@ -144,7 +143,6 @@ DEFINES += IR_ECP
 DEFINES += IR_KERNEL_PTRS
 DEFINES += CX_ASSERT
 
-
 # By default, make "make install" copy the final executable to the same
 # directory in which the main project file (main.pro) lies. IboView has all its
 # data files embedded as QT resources, so apart from the exe itself no extra
@@ -153,7 +151,6 @@ target.path = $$_PRO_FILE_PWD_
 # program.files = $$TARGET
 INSTALLS += target
 # ^-- see: https://doc.qt.io/qt-5/qmake-advanced-usage.html#installing-files
-
 
 # LIBS += -lGLEW     # OpenGL extension wrangler library (rest is included automatically via QT += opengl).
 # (brings own implementation of glew.c now, from glew-20140726.tgz)
@@ -168,11 +165,25 @@ CONFIG += release  # turn on release build
 DEFINES += NDEBUG  # turn of assertions
 
 # OpenMP
+# On macOS (Apple Silicon / arm64 with Homebrew LLVM), Apple's built-in clang does
+# not support -fopenmp. We must use Homebrew's libomp via -Xpreprocessor -fopenmp -lomp.
+# Install dependencies first:
+#   brew install llvm libomp
+# Then build with:
+#   CXX=/opt/homebrew/opt/llvm/bin/clang++ CC=/opt/homebrew/opt/llvm/bin/clang \
+#   BOOST_ROOT=/opt/homebrew/opt/boost \
+#   /opt/homebrew/opt/qt@5/bin/qmake ../main.pro && make -j$(sysctl -n hw.ncpu)
 win32 {
    QMAKE_CXXFLAGS += /openmp
    QMAKE_LFLAGS += /openmp
 }
-!win32 {
+macx {
+   # Apple Silicon (arm64) / Homebrew LLVM: use -Xpreprocessor + libomp
+   # Assumes Homebrew is installed at /opt/homebrew (standard Apple Silicon path)
+   QMAKE_CXXFLAGS += -Xpreprocessor -fopenmp -I/opt/homebrew/opt/libomp/include
+   QMAKE_LFLAGS += -L/opt/homebrew/opt/libomp/lib -lomp
+}
+!win32:!macx {
    QMAKE_CXXFLAGS += -fopenmp
    QMAKE_LFLAGS += -fopenmp
 }
@@ -185,6 +196,9 @@ win32 {
    OPTFLAGS_OFF = -O2
    OPTFLAGS_ON = -Ofast -ffast-math -march=native
    QMAKE_CXXFLAGS += -Wno-deprecated-copy -Wno-class-memaccess -Wno-implicit-fallthrough -Wno-unknown-pragmas -fmax-errors=10
+   # On macOS, suppress "argument unused during compilation" warnings that arise
+   # when -Xpreprocessor flags are passed to the linker stage via some qmake specs.
+   macx: QMAKE_CXXFLAGS += -Wno-unused-command-line-argument
    # DEFINES += _GLIBCXX_PARALLEL
    # ^-- Interesting, see: https://gcc.gnu.org/onlinedocs/libstdc++/manual/parallel_mode_using.html
    #     But still not sure what to think about this. In any case, we
@@ -213,9 +227,8 @@ QMAKE_CXXFLAGS_RELEASE += $$OPTFLAGS_ON
 # programs
 #DEFINES += INCLUDE_OPTIONALS
 
-
 # Input
-FORMS += $$IV/MainForm2.ui $$IV/AboutForm.ui $$IV/FindOrbitalsForm.ui $$IV/ShowTextForm.ui $$IV/ComputeWfForm.ui $$IV/TablesForm.ui $$IV/EditFramesForm.ui $$IV/PreferencesForm.ui $$IV/ComputeEosForm.ui $$IV/$$IV/EditVolumeSurfaceForm.ui
+FORMS += $$IV/MainForm2.ui $$IV/AboutForm.ui $$IV/FindOrbitalsForm.ui $$IV/ShowTextForm.ui $$IV/ComputeWfForm.ui $$IV/TablesForm.ui $$IV/EditFramesForm.ui $$IV/PreferencesForm.ui $$IV/ComputeEosForm.ui $$IV/ComputeDensityForm.ui
 RESOURCES += resources.qrc
 
 equals(HAVE_EXTERNAL_BLAS,0) {
@@ -228,7 +241,7 @@ equals(HAVE_EXTERNAL_BLAS,0) {
    # - I reduced the amount of different LAPACK-routines used rather significantly
    #   throughout both MicroScf and IboView. And the few routines which are
    #   remaining have been programmed in such a way that they can perform their
-   #   tasks with LAPACK routines replaced by Eigen routines.
+duties with LAPACK routines replaced by Eigen routines.
    #   At this moment, the only higher level LA primitives used are:
    #
    #   + Diagonalize(): Square symmetric matrix spectral decomposition
@@ -262,7 +275,7 @@ equals(HAVE_EXTERNAL_BLAS,0) {
    #     I've seen comparable performance to MKL in many situations.
    #
    #   + ...However, that is the case provided it is compiled with a modern optimizer
-   #     for numerical work (which we will not) and for the concrete CPU at han
+   #     for numerical work (which we will not) and for the concrete CPU at hand
    #     (which we also will not do). We just make a static AVX version -- so
    #     all routines which rely cruvially on efficient MxMs (e.g., DF-JK) will
    #     be several times slower than what they could achieve with AVX2, FMA,
@@ -293,12 +306,12 @@ equals(HAVE_EXTERNAL_BLAS,0) {
    DEFINES += NO_OVERWRITE USE_EIGEN_LA
 }
 
-HEADERS += $$IV/Iv.h $$IV/IvMain.h $$IV/IvSettings.h $$IV/IvView3D.h $$IV/IvDataSet.h $$IV/IvDataOptions.h $$IV/IvVolumeDataSet.h $$IV/IvOrbital.h $$IV/IvDocument.h $$IV/IvAnalysis.h $$IV/IvIsoSurface.h $$IV/IvMesh.h $$IV/IvScript.h $$IV/IvIao.h $$IV/IvIrc.h $$IV/IvGl.h $$IV/IvLog.h $$IV/fn_LiberationSans.h
-SOURCES += $$IV/IvMain.cpp $$IV/IvSettings.cpp $$IV/IvView3D.cpp $$IV/IvDataSet.cpp $$IV/IvDataOptions.cpp $$IV/IvVolumeDataSet.cpp $$IV/IvOrbital.cpp $$IV/IvDocument.cpp  $$IV/IvAnalysis.cpp $$IV/IvScript.cpp $$IV/IvMesh.cpp $$IV/IvIsoSurface.cpp $$IV/IvIao.cpp $$IV/IvIrc.cpp $$IV/IvGl.cpp $$IV/IvLog.cpp
+HEADERS += $$IV/Iv.h $$IV/IvMain.h $$IV/IvSettings.h $$IV/IvView3D.h $$IV/IvDataSet.h $$IV/IvDataOptions.h $$IV/IvVolumeDataSet.h $$IV/IvOrbital.h $$IV/IvDocument.h $$IV/IvAnalysis.h $$IV/IvIsoSurface.h $$IV/IvScript.h $$IV/IvGl.h $$IV/IvMesh.h
+SOURCES += $$IV/IvMain.cpp $$IV/IvSettings.cpp $$IV/IvView3D.cpp $$IV/IvDataSet.cpp $$IV/IvDataOptions.cpp $$IV/IvVolumeDataSet.cpp $$IV/IvOrbital.cpp $$IV/IvDocument.cpp  $$IV/IvAnalysis.cpp $$IV/IvScript.cpp $$IV/IvGl.cpp $$IV/IvMesh.cpp $$IV/IvIsoSurface.cpp
 
-HEADERS += $$IV/IvOrbitalFile.h $$IV/IvCurveView.h $$IV/IvComputeWfForm.h $$IV/IvFindOrbitalsForm.h $$IV/IvShowTextForm.h $$IV/IvFixedAspectSvg.h $$IV/IvStatusBar.h $$IV/IvTables.h $$IV/IvEditFramesForm.h $$IV/IvPreferencesForm.h $$IV/IvEditVolumeSurface.h $$IV/IvFileConvert.h $$IV/IvComputeEosForm.h
-SOURCES += $$IV/IvOrbitalFile.cpp $$IV/IvCurveView.cpp $$IV/IvComputeWfForm.cpp $$IV/IvFindOrbitalsForm.cpp $$IV/IvShowTextForm.cpp $$IV/IvFixedAspectSvg.cpp $$IV/IvStatusBar.cpp $$IV/IvTables.cpp $$IV/IvEditFramesForm.cpp $$IV/IvPreferencesForm.cpp $$IV/IvEditVolumeSurface.cpp $$IV/IvFileConvert.cpp $$IV/IvComputeEosForm.cpp
-# SOURCES += $$IV/IvIntInit.cpp 
+HEADERS += $$IV/IvOrbitalFile.h $$IV/IvCurveView.h $$IV/IvComputeWfForm.h $$IV/IvFindOrbitalsForm.h $$IV/IvShowTextForm.h $$IV/IvFixedAspectSvg.h $$IV/IvStatusBar.h $$IV/IvTables.h $$IV/IvEditFramesForm.h $$IV/IvPreferencesForm.h $$IV/IvComputeEosForm.h $$IV/IvComputeDensityForm.h
+SOURCES += $$IV/IvOrbitalFile.cpp $$IV/IvCurveView.cpp $$IV/IvComputeWfForm.cpp $$IV/IvFindOrbitalsForm.cpp $$IV/IvShowTextForm.cpp $$IV/IvFixedAspectSvg.cpp $$IV/IvStatusBar.cpp $$IV/IvTables.cpp $$IV/IvEditFramesForm.cpp $$IV/IvPreferencesForm.cpp $$IV/IvComputeEosForm.cpp $$IV/IvComputeDensityForm.cpp
+# SOURCES += $$IV/IvIntInit.cpp
 
 
 HEADERS += $$PUGIXML/pugixml.hpp $$PUGIXML/pugiconfig.hpp
@@ -485,7 +498,6 @@ SOURCES += $$CXF/CxRandom.cpp
 # HEADERS += $$CXF/CxNumpyArray.h
 
 
-
 # https://stackoverflow.com/questions/18371797/qmake-handling-options-for-both-gcc-and-msvc
 # gcc:QMAKE_CXXFLAGS += -Wno-deprecated-copy -Wno-class-memaccess
 # message($${QMAKE_CXXFLAGS})
@@ -501,7 +513,6 @@ SOURCES += $$CXF/CxRandom.cpp
 # note: for compiling with clang instead of g++ on linux:
 #   /usr/bin/qmake-qt4 -spec /usr/lib64/qt4/mkspecs/unsupported/linux-clang
 # (works for me, but doesn't do OpenMP)
-
 
 
 # Config testing:
@@ -520,3 +531,26 @@ SOURCES += $$CXF/CxRandom.cpp
 # Note: need to delete cache files to make qmake retest the configuration.
 # Otherwise it sometimes comes to rather odd and incoherent results if configs
 # are mixed.
+
+# macOS / Apple Silicon build notes:
+# ====================================
+# On macOS with Apple Silicon (M1/M2/M3/M4, arm64), build as follows:
+#
+# 1. Install dependencies via Homebrew (Apple Silicon path: /opt/homebrew):
+#      brew install qt@5 llvm libomp boost
+#
+# 2. Set up your environment (add to ~/.zshrc or run before building):
+#      export CC=/opt/homebrew/opt/llvm/bin/clang
+#      export CXX=/opt/homebrew/opt/llvm/bin/clang++
+#      export PATH="/opt/homebrew/opt/qt@5/bin:$PATH"
+#      export LDFLAGS="-L/opt/homebrew/opt/qt@5/lib -L/opt/homebrew/opt/libomp/lib -L/opt/homebrew/opt/llvm/lib"
+#      export CPPFLAGS="-I/opt/homebrew/opt/qt@5/include -I/opt/homebrew/opt/libomp/include"
+#
+# 3. Build:
+#      mkdir build && cd build
+#      BOOST_ROOT=/opt/homebrew/opt/boost \
+#        /opt/homebrew/opt/qt@5/bin/qmake ../main.pro
+#      make -j$(sysctl -n hw.ncpu)
+#
+# 4. Known macOS rendering issue - always launch with:
+#      ./iboview -disable-alpha -disable-backfaces
